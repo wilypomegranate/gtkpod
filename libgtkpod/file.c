@@ -420,10 +420,15 @@ static void recurse_directories_internal(gchar *name, GSList **trknames, gboolea
                         nextfull = basepath;
                     }
 
-                    if (g_hash_table_lookup(*directories_seen, nextfull))
+                    if (g_hash_table_lookup(*directories_seen, nextfull)) {
                         continue;
-                    else
-                        g_hash_table_insert(*directories_seen, nextfull, nextfull);
+                    } else {
+			/* The hash table is set-up to free the key,
+			 * but not the value, so we can pass a single
+			 * newly allocated string for both. */
+			const gchar *key = g_strdup(nextfull);
+			g_hash_table_insert(*directories_seen, key, key);
+		    }
 
                     if (descend || !g_file_test(nextfull, G_FILE_TEST_IS_DIR)) {
                         recurse_directories_internal(nextfull, trknames, descend, directories_seen);
@@ -453,7 +458,8 @@ static void recurse_directories_internal(gchar *name, GSList **trknames, gboolea
  *                      FALSE: don't enter subdirectories
  */
 static void recurse_directories_with_history(gchar *dir, GSList **trknames, gboolean descend) {
-    GHashTable *directories = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    /* Delete keys but not values. Users will set both to the same string. */
+    GHashTable *directories = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
     recurse_directories_internal(dir, trknames, descend, &directories);
     g_hash_table_destroy(directories);
 }
